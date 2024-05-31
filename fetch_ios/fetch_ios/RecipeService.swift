@@ -1,10 +1,3 @@
-//
-//  RecipeService.swift
-//  fetch_ios
-//
-//  Created by Jiajie Yin on 5/31/24.
-//
-
 import Foundation
 
 struct Recipe: Decodable, Identifiable {
@@ -42,9 +35,16 @@ struct RecipeDetail: Decodable {
                 ingredientsArray.append("\(measure) \(ingredient)")
             }
         }
-        ingredients = ingredientsArray
+        ingredients = ingredientsArray.filter { !$0.isEmpty }
+    }
+    
+    init(strMeal: String, strInstructions: String, ingredients: [String]) {
+        self.strMeal = strMeal
+        self.strInstructions = strInstructions
+        self.ingredients = ingredients
     }
 }
+
 
 class RecipeService {
     private let baseURL = "https://themealdb.com/api/json/v1/1/"
@@ -65,7 +65,7 @@ class RecipeService {
             
             do {
                 let decodedResponse = try JSONDecoder().decode([String: [Recipe]].self, from: data)
-                let recipes = decodedResponse["meals"] ?? []
+                let recipes = (decodedResponse["meals"] ?? []).filter { !$0.strMeal.isEmpty }
                 completion(.success(recipes))
             } catch {
                 completion(.failure(error))
@@ -90,7 +90,10 @@ class RecipeService {
             do {
                 let decodedResponse = try JSONDecoder().decode([String: [RecipeDetail]].self, from: data)
                 if let recipeDetail = decodedResponse["meals"]?.first {
-                    completion(.success(recipeDetail))
+                    // filter out any null or empty values
+                    let filteredIngredients = recipeDetail.ingredients.filter { !$0.isEmpty }
+                    let filteredRecipeDetail = RecipeDetail(strMeal: recipeDetail.strMeal, strInstructions: recipeDetail.strInstructions, ingredients: filteredIngredients)
+                    completion(.success(filteredRecipeDetail))
                 } else {
                     completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No recipe detail found"])))
                 }
